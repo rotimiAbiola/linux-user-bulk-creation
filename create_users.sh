@@ -1,8 +1,4 @@
 #!/bin/bash
-# This script is used to create a new user on the system and add them to group(s)
-# The usernames and groups are parsed through a text file with the syntax: "username; group, group, group"
-# Usage: bash create_users.sh <name-of-text-file>
-
 
 # Check if the user has provided a filename as an argument
 if [ "$#" -ne 1 ]; then
@@ -11,28 +7,28 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # Define the input file
-INPUT_FILE=$1
+user_list_file=$1
 
 # Check if the input file exists
-if [ ! -f "$INPUT_FILE" ]; then
-  echo "Error: File '$INPUT_FILE' not found!"
+if [ ! -f "$user_list_file" ]; then
+  echo "Error: File '$user_list_file' not found!"
   exit 1
 fi
 
 # Log file and secure passwords file
-LOG_FILE="/var/log/user_management.log"
-PASSWD_FILE="/var/secure/user_passwords.csv"
+user_log_file="/var/log/user_management.log"
+secure_password_file="/var/secure/user_passwords.csv"
 
 # Ensure the log file and password file directories exist
 mkdir -p /var/log
 mkdir -p /var/secure
 
 # Initialize the log file and password file
-echo "User management log" > "$LOG_FILE"
-echo "Username, Password" > "$PASSWD_FILE"
+echo "User management log" > "$user_log_file"
+echo "Username, Password" > "$secure_password_file"
 
 # Set permissions for the password file
-chmod 600 "$PASSWD_FILE"
+chmod 600 "$secure_password_file"
 
 # Function to generate a random password
 generate_password() {
@@ -48,9 +44,9 @@ while IFS=';' read -r username groups; do
   # Create a personal group with the same name as the username
   if ! getent group "$username" >/dev/null; then
     groupadd "$username"
-    echo "Created group: $username" >> "$LOG_FILE"
+    echo "Created group: $username" >> "$user_log_file"
   else
-    echo "Group $username already exists" >> "$LOG_FILE"
+    echo "Group $username already exists" >> "$user_log_file"
   fi
 
   # Create the user with the personal group
@@ -58,10 +54,10 @@ while IFS=';' read -r username groups; do
     password=$(generate_password)
     useradd -m -g "$username" -s /bin/bash "$username"
     echo "$username:$password" | chpasswd
-    echo "$username,$password" >> "$PASSWD_FILE"
-    echo "Created user: $username with home directory and set password" >> "$LOG_FILE"
+    echo "$username,$password" >> "$secure_password_file"
+    echo "Created user: $username with home directory and set password" >> "$user_log_file"
   else
-    echo "User $username already exists" >> "$LOG_FILE"
+    echo "User $username already exists" >> "$user_log_file"
   fi
 
   # Add the user to the specified groups
@@ -70,13 +66,13 @@ while IFS=';' read -r username groups; do
     group=$(echo "$group" | xargs)
     if ! getent group "$group" >/dev/null; then
       groupadd "$group"
-      echo "Created group: $group" >> "$LOG_FILE"
+      echo "Created group: $group" >> "$user_log_file"
     fi
     usermod -aG "$group" "$username"
-    echo "Added user $username to group $group" >> "$LOG_FILE"
+    echo "Added user $username to group $group" >> "$user_log_file"
   done
 
-done < "$INPUT_FILE"
+done < "$user_list_file"
 
 echo "User creation and group assignment completed."
 
