@@ -43,7 +43,7 @@ generate_password() {
 
 # Read the input file line by line
 while IFS=';' read -r username groups; do
-  # Remove leading and trailing whitespace
+# Remove leading and trailing whitespace
   username=$(echo "$username" | xargs)
   groups=$(echo "$groups" | xargs)
 
