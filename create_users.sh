@@ -1,9 +1,16 @@
 #!/bin/bash
+set -e
 
+terminate() {
+  local msg="${1:-"An error occured"}"
+  local code="${2:-160}"
+  echo "ERROR: ${msg}" >&2
+  exit "${code}"
+}
 # Check if the user has provided a filename as an argument
 if [ "$#" -ne 1 ]; then
-  echo "Usage: bash $0 <name-of-text-file>"
-  exit 1
+  terminate "Please pass one argument referencing the name of the text file containing users' information
+  Sample Usage: bash $0 <name-of-text-file>"
 fi
 
 # Define the input file
@@ -11,8 +18,7 @@ user_list_file=$1
 
 # Check if the input file exists
 if [ ! -f "$user_list_file" ]; then
-  echo "Error: File '$user_list_file' not found!"
-  exit 1
+  terminate "File '$user_list_file' not found!"
 fi
 
 # Log file and secure passwords file
@@ -49,7 +55,7 @@ while IFS=';' read -r username groups; do
     echo "Group $username already exists" >> "$user_log_file"
   fi
 
-  # Create the user with the personal group
+  # Create the user
   if ! id "$username" >/dev/null 2>&1; then
     password=$(generate_password)
     useradd -m -g "$username" -s /bin/bash "$username"
