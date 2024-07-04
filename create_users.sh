@@ -1,16 +1,44 @@
 #!/bin/bash
+readonly SCRIPT_NAME=${0##*/}
+readonly ARGS_ERROR=150
+
 set -e
 
+# Create a Function to end the script if an error occurs
 terminate() {
   local msg="${1:-"An error occured"}"
   local code="${2:-160}"
   echo "ERROR: ${msg}" >&2
   exit "${code}"
 }
+
+# Create a Function that provides help on how to use the script
+usage() {
+  cat <<USAGE
+Usage: bash ${SCRIPT_NAME} <name-of-text-file>
+
+This is a usage message with instructions on how to run the script.
+The script only requires just one argument to work. The argument must reference the name of the text file containing users' information.
+For example, if the text file is named users_list.txt, run "bash ${SCRIPT_NAME} users_list.txt" on the terminal.
+If the current user does not have the necessary permission to run the script, run it with sudo priviledges or as root.
+
+Arguments:
+  name-of-text-file The name of the text file containing users' details
+
+Options:
+  -h, --help      Show this help message and exit
+USAGE
+}
+
 # Check if the user has provided a filename as an argument
 if [ "$#" -ne 1 ]; then
-  terminate "Please pass one argument referencing the name of the text file containing users' information
-  Sample Usage: bash $0 <name-of-text-file>"
+  usage
+  terminate "Command line argument missing" "${ARGS_ERROR}"
+fi
+
+if [[ "${1}" == "-h" ]] || [[ "${1}" == "--help" ]]; then
+  usage
+  exit 0
 fi
 
 # Define the input file
@@ -73,9 +101,16 @@ while IFS=';' read -r username groups; do
     if ! getent group "$group" >/dev/null; then
       groupadd "$group"
       echo "Created group: $group" >> "$user_log_file"
+    else
+      echo "Group $group already exists" >> "$user_log_file"
     fi
-    usermod -aG "$group" "$username"
-    echo "Added user $username to group $group" >> "$user_log_file"
+
+    if id -nG "$username" | grep -qw "$group"; then
+      echo "User $username is already a member of group $group" >> "$user_log_file"
+    else
+      usermod -aG "$group" "$username"
+      echo "Added user $username to group $group" >> "$user_log_file"
+    fi
   done
 
 done < "$user_list_file"
@@ -83,3 +118,4 @@ done < "$user_list_file"
 echo "User creation and group assignment completed."
 
 exit 0
+
